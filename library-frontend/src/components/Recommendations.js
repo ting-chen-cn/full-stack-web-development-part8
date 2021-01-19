@@ -1,7 +1,7 @@
 import React from 'react'
 import { Table } from 'react-bootstrap'
 
-export const Recommendations = ({ show, books }) => {
+export const Recommendations = ({ show, books, user }) => {
   if (!show || books === []) {
     return null
   }
@@ -10,7 +10,8 @@ export const Recommendations = ({ show, books }) => {
     <div>
       <h2>recommendations</h2>
       <>
-        books in your favorite genre <strong>patters</strong>
+        books in your favorite genre{' '}
+        <strong> {user.favoriteGenre}</strong>
       </>
       <Table striped>
         <tbody>

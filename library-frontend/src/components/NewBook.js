@@ -3,12 +3,51 @@ import { ADD_BOOK, ALL_BOOKS, ALL_AUTHORS } from './query'
 import { useMutation } from '@apollo/client'
 import { Button, Form, InputGroup } from 'react-bootstrap'
 
-const NewBook = ({ show, setPage }) => {
+const NewBook = ({ show, setPage, getUser }) => {
   const [title, setTitle] = useState('')
   const [author, setAuthor] = useState('')
   const [published, setPublished] = useState('')
   const [genre, setGenre] = useState('')
   const [genres, setGenres] = useState([])
+
+  // const client = useApolloClient()
+
+  // const updateCacheWith = (addBook) => {
+  //   const booksInStore = client.readQuery({ query: ALL_BOOKS })
+  //   if (
+  //     !booksInStore.allBooks.some((book) => book.id === addBook.id)
+  //   ) {
+  //     client.writeQuery({
+  //       query: ALL_BOOKS,
+  //       data: {
+  //         ...booksInStore,
+  //         allBooks: [...booksInStore.allBooks, addBook],
+  //       },
+  //     })
+
+  //     const allAuthors = client.readQuery({ query: ALL_AUTHORS })
+  //       .allAuthors
+  //     const authorsInStore = {
+  //       allAuthors: allAuthors.map((author) => ({ ...author })),
+  //     }
+  //     const author = authorsInStore.allAuthors.find(
+  //       (author) => author.name === addBook.author.name
+  //     )
+  //     if (author) {
+  //       author.bookCount += 1
+  //     } else {
+  //       authorsInStore.allAuthors = [
+  //         ...authorsInStore.allAuthors,
+  //         addBook.author,
+  //       ]
+  //     }
+  //     client.writeQuery({
+  //       query: ALL_AUTHORS,
+  //       data: authorsInStore,
+  //     })
+  //   }
+  // }
+
   const [createBook] = useMutation(ADD_BOOK, {
     refetchQueries: [{ query: ALL_BOOKS }, { query: ALL_AUTHORS }],
   })

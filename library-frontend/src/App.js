@@ -26,6 +26,7 @@ const App = () => {
     localStorage.getItem('library-user-token')
   )
   const [booksByUser, setBooksByUser] = useState([])
+  const [user, setUser] = useState('')
 
   const notify = (message) => {
     setErrorMessage(message)
@@ -34,6 +35,7 @@ const App = () => {
     }, 10000)
   }
   const [getUser, resultUser] = useLazyQuery(ME, {
+    fetchPolicy: 'network-only',
     onError: (error) => {
       setError(error.graphQLErrors[0].message)
     },
@@ -45,8 +47,9 @@ const App = () => {
   useEffect(() => {
     if (resultUser.data) {
       if (resultUser.data.me) {
+        setUser(resultUser.data.me)
         getBooksByGenre({
-          variables: { genres: resultUser.data.me.favoriteGenre },
+          variables: { genres: user.favoriteGenre },
         })
       }
     }
@@ -57,12 +60,6 @@ const App = () => {
       setBooksByUser(resultBooksByGenre.data.allBooks)
     }
   }, [resultBooksByGenre.data])
-
-  // useEffect(() => {
-  //   if (page === 'recommend') {
-  //     getUser()
-  //   }
-  // }, [page])
 
   const logout = () => {
     setToken(null)
@@ -76,9 +73,7 @@ const App = () => {
   }
   const recommend = () => {
     setPage('recommend')
-
     getUser()
-    console.log(resultUser)
   }
 
   return (
@@ -148,9 +143,14 @@ const App = () => {
       <Recommendations
         show={page === 'recommend'}
         books={booksByUser}
+        user={user}
       />
 
-      <NewBook show={page === 'add'} setPage={setPage} />
+      <NewBook
+        show={page === 'add'}
+        setPage={setPage}
+        getUser={getUser}
+      />
     </div>
   )
 }

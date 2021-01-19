@@ -21,14 +21,14 @@ const Books = (props) => {
     )
   }
 
-  let genre = books.map((b) => b.genres).flat()
-  let genres = [...new Set(genre)]
+  const genre = books.map((b) => b.genres).flat()
+  const genres = [...new Set(genre)]
 
   return (
     <div>
       <h2>books</h2>
       <>
-        in genre <strong>patters</strong>
+        in genre <strong>{genresToShow.g}</strong>
       </>
       <Table striped>
         <tbody>
