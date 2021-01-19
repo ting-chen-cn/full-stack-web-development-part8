@@ -1,11 +1,85 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import Authors from './components/Authors'
 import Books from './components/Books'
 import NewBook from './components/NewBook'
 import { Button, Nav } from 'react-bootstrap'
+import LoginForm from './components/LoginForm'
+import {
+  useApolloClient,
+  useLazyQuery,
+  setError,
+} from '@apollo/client'
+import { ME, ALL_Books_By_Genre } from './components/query'
+import Recommendations from './components/Recommendations'
 
+const Notify = ({ errorMessage }) => {
+  if (!errorMessage) {
+    return null
+  }
+  return <div style={{ color: 'red' }}>{errorMessage}</div>
+}
 const App = () => {
-  const [page, setPage] = useState('authors')
+  const client = useApolloClient()
+  const [page, setPage] = useState('login')
+  const [errorMessage, setErrorMessage] = useState(null)
+  const [token, setToken] = useState(
+    localStorage.getItem('library-user-token')
+  )
+  const [booksByUser, setBooksByUser] = useState([])
+
+  const notify = (message) => {
+    setErrorMessage(message)
+    setTimeout(() => {
+      setErrorMessage(null)
+    }, 10000)
+  }
+  const [getUser, resultUser] = useLazyQuery(ME, {
+    onError: (error) => {
+      setError(error.graphQLErrors[0].message)
+    },
+  })
+  const [getBooksByGenre, resultBooksByGenre] = useLazyQuery(
+    ALL_Books_By_Genre
+  )
+
+  useEffect(() => {
+    if (resultUser.data) {
+      if (resultUser.data.me) {
+        getBooksByGenre({
+          variables: { genres: resultUser.data.me.favoriteGenre },
+        })
+      }
+    }
+  }, [resultUser.data, getBooksByGenre])
+
+  useEffect(() => {
+    if (resultBooksByGenre.data) {
+      setBooksByUser(resultBooksByGenre.data.allBooks)
+    }
+  }, [resultBooksByGenre.data])
+
+  // useEffect(() => {
+  //   if (page === 'recommend') {
+  //     getUser()
+  //   }
+  // }, [page])
+
+  const logout = () => {
+    setToken(null)
+    localStorage.clear()
+    client.resetStore()
+    setBooksByUser([])
+    setPage('login')
+  }
+  const login = () => {
+    setPage('login')
+  }
+  const recommend = () => {
+    setPage('recommend')
+
+    getUser()
+    console.log(resultUser)
+  }
 
   return (
     <div className='container'>
@@ -26,21 +100,57 @@ const App = () => {
             books
           </Button>
         </Nav.Item>
-        <Nav.Item>
-          <Button
-            variant='outline-dark'
-            onClick={() => setPage('add')}
-          >
-            add book
-          </Button>
-        </Nav.Item>
+        {token ? (
+          <Nav.Item>
+            <Button
+              variant='outline-dark'
+              onClick={() => setPage('add')}
+            >
+              add book
+            </Button>
+          </Nav.Item>
+        ) : null}
+        <Nav.Item></Nav.Item>
+        {token ? (
+          <Nav.Item>
+            <Button variant='outline-dark' onClick={recommend}>
+              recommend
+            </Button>
+          </Nav.Item>
+        ) : null}
+        {token ? (
+          <Nav.Item>
+            <Button variant='outline-dark' onClick={logout}>
+              logout
+            </Button>
+          </Nav.Item>
+        ) : (
+          <Nav.Item>
+            <Button variant='outline-dark' onClick={login}>
+              login
+            </Button>
+          </Nav.Item>
+        )}
       </Nav>
+
+      <Notify errorMessage={errorMessage} />
+      <LoginForm
+        show={page === 'login'}
+        setToken={setToken}
+        setError={notify}
+        setPage={setPage}
+      />
 
       <Authors show={page === 'authors'} />
 
       <Books show={page === 'books'} />
 
-      <NewBook show={page === 'add'} />
+      <Recommendations
+        show={page === 'recommend'}
+        books={booksByUser}
+      />
+
+      <NewBook show={page === 'add'} setPage={setPage} />
     </div>
   )
 }

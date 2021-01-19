@@ -1,4 +1,10 @@
-const { ApolloServer, gql } = require('apollo-server')
+const {
+  ApolloServer,
+  gql,
+  UserInputError,
+  AuthenticationError,
+} = require('apollo-server')
+const config = require('./utils/config')
 const mongoose = require('mongoose')
 const Book = require('./models/Book')
 const Author = require('./models/Author')
@@ -6,8 +12,7 @@ const User = require('./models/User')
 const jwt = require('jsonwebtoken')
 const JWT_SECRET = 'NEED_HERE_A_KEY'
 
-const MONGODB_URI =
-  'mongodb+srv://fullstack:halfstack@cluster0-ostce.mongodb.net/graphql?retryWrites=true'
+const MONGODB_URI = config.MONGODB_URI
 
 console.log('connecting to', MONGODB_URI)
 
@@ -76,20 +81,21 @@ const resolvers = {
   Query: {
     authorCount: () => Author.collection.countDocuments(),
     bookCount: () => Book.collection.countDocuments(),
-    allBooks: (root, args) => {
-      let books = Book.find({})
+    allBooks: async (root, args) => {
+      let books = await Book.find({}).populate('author')
+
       if (!args.author && !args.genres) {
         return books
       }
       if (args.author && !args.genres) {
-        return books.filter((b) => b.author === args.author)
+        return books.filter((b) => b.author.name === args.author)
       }
       if (!args.author && args.genres) {
         return books.filter((b) => b.genres.includes(args.genres))
       }
       return books
         .filter((b) => b.genres.includes(args.genres))
-        .filter((b) => b.author === args.author)
+        .filter((b) => b.author.name === args.author)
     },
     allAuthors: async () => {
       const authors = await Author.find({})
@@ -100,7 +106,13 @@ const resolvers = {
       return Promise.all(combined)
     },
     me: (root, args, context) => {
-      return context.currentUser
+      console.log('result me')
+      const currentUser = context.currentUser
+
+      if (!currentUser) {
+        return null
+      }
+      return currentUser
     },
   },
   Mutation: {
@@ -119,7 +131,6 @@ const resolvers = {
             invalidArgs: args,
           })
         }
-        // await author.save()
       }
       const newBook = new Book({
         ...args,
@@ -153,7 +164,10 @@ const resolvers = {
       return updatedAuthor
     },
     createUser: (root, args) => {
-      const user = new User({ username: args.username })
+      const user = new User({
+        username: args.username,
+        favoriteGenre: args.favoriteGenre,
+      })
       return user.save().catch((error) => {
         throw new UserInputError(error.message, {
           invalidArgs: args,
@@ -163,7 +177,7 @@ const resolvers = {
     login: async (root, args) => {
       const user = await User.findOne({ username: args.username })
 
-      if (!user || args.password !== 'secred') {
+      if (!user || args.password !== 'a') {
         throw new UserInputError('wrong credentials')
       }
 
@@ -184,11 +198,10 @@ const server = new ApolloServer({
     const auth = req ? req.headers.authorization : null
     if (auth && auth.toLowerCase().startsWith('bearer ')) {
       const decodedToken = jwt.verify(auth.substring(7), JWT_SECRET)
-      const currentUser = await User.findById(
-        decodedToken.id
-      ).populate('friends')
+      const currentUser = await User.findById(decodedToken.id)
       return { currentUser }
     }
+    return null
   },
 })
 

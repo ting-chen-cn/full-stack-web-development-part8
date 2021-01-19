@@ -7,6 +7,10 @@ const schema = new mongoose.Schema({
     unique: true,
     minlength: 3,
   },
+  favoriteGenre: {
+    type: String,
+    required: true,
+  },
 })
 
 module.exports = mongoose.model('User', schema)

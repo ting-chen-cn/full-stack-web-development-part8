@@ -3,16 +3,16 @@ import { ADD_BOOK, ALL_BOOKS, ALL_AUTHORS } from './query'
 import { useMutation } from '@apollo/client'
 import { Button, Form, InputGroup } from 'react-bootstrap'
 
-const NewBook = (props) => {
+const NewBook = ({ show, setPage }) => {
   const [title, setTitle] = useState('')
-  const [author, setAuhtor] = useState('')
+  const [author, setAuthor] = useState('')
   const [published, setPublished] = useState('')
   const [genre, setGenre] = useState('')
   const [genres, setGenres] = useState([])
   const [createBook] = useMutation(ADD_BOOK, {
     refetchQueries: [{ query: ALL_BOOKS }, { query: ALL_AUTHORS }],
   })
-  if (!props.show) {
+  if (!show) {
     return null
   }
 
@@ -30,9 +30,10 @@ const NewBook = (props) => {
 
     setTitle('')
     setPublished('')
-    setAuhtor('')
+    setAuthor('')
     setGenres([])
     setGenre('')
+    setPage('books')
   }
 
   const addGenre = () => {
@@ -63,7 +64,7 @@ const NewBook = (props) => {
             </InputGroup.Prepend>
             <Form.Control
               value={author}
-              onChange={({ target }) => setAuhtor(target.value)}
+              onChange={({ target }) => setAuthor(target.value)}
             />
           </InputGroup>
           <InputGroup className='mb-3'>
