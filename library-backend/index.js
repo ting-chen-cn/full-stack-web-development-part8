@@ -110,7 +110,7 @@ const resolvers = {
         return { ...a.toObject(), bookCount: bookOfA.length }
       })
       const returnedAuthors = Promise.all(combined)
-      console.log(returnedAuthors)
+
       return returnedAuthors
     },
     me: (root, args, context) => {
@@ -150,11 +150,11 @@ const resolvers = {
           invalidArgs: args,
         })
       }
-      pubsub.publish('BOOK_ADDED', { bookAdded: newBook })
+
       const returnBook = await Book.findById(newBook._id).populate(
         'author'
       )
-
+      pubsub.publish('BOOK_ADDED', { bookAdded: returnBook })
       return returnBook
     },
     editAuthor: async (root, args, { currentUser }) => {
