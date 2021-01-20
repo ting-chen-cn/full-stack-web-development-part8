@@ -75,7 +75,13 @@ const typeDefs = gql`
     createUser(username: String!, favoriteGenre: String!): User
     login(username: String!, password: String!): Token
   }
+
+  type Subscription {
+    bookAdded: Book!
+  }
 `
+const { PubSub } = require('apollo-server')
+const pubsub = new PubSub()
 
 const resolvers = {
   Query: {
@@ -103,10 +109,11 @@ const resolvers = {
         const bookOfA = await Book.find({ author: a._id })
         return { ...a.toObject(), bookCount: bookOfA.length }
       })
-      return Promise.all(combined)
+      const returnedAuthors = Promise.all(combined)
+      console.log(returnedAuthors)
+      return returnedAuthors
     },
     me: (root, args, context) => {
-      console.log('result me')
       const currentUser = context.currentUser
 
       if (!currentUser) {
@@ -143,8 +150,12 @@ const resolvers = {
           invalidArgs: args,
         })
       }
-      // await newBook.save()
-      return newBook
+      pubsub.publish('BOOK_ADDED', { bookAdded: newBook })
+      const returnBook = await Book.findById(newBook._id).populate(
+        'author'
+      )
+
+      return returnBook
     },
     editAuthor: async (root, args, { currentUser }) => {
       if (!currentUser) {
@@ -189,6 +200,11 @@ const resolvers = {
       return { value: jwt.sign(userForToken, JWT_SECRET) }
     },
   },
+  Subscription: {
+    bookAdded: {
+      subscribe: () => pubsub.asyncIterator(['BOOK_ADDED']),
+    },
+  },
 }
 
 const server = new ApolloServer({
@@ -205,6 +221,7 @@ const server = new ApolloServer({
   },
 })
 
-server.listen().then(({ url }) => {
+server.listen().then(({ url, subscriptionsUrl }) => {
   console.log(`Server ready at ${url}`)
+  console.log(`Subscriptions ready at ${subscriptionsUrl}`)
 })

@@ -8,8 +8,15 @@ import {
   useApolloClient,
   useLazyQuery,
   setError,
+  useSubscription,
 } from '@apollo/client'
-import { ME, ALL_Books_By_Genre } from './components/query'
+import {
+  ME,
+  ALL_Books_By_Genre,
+  BOOK_ADDED,
+  ALL_BOOKS,
+  ALL_AUTHORS,
+} from './components/query'
 import Recommendations from './components/Recommendations'
 
 const Notify = ({ errorMessage }) => {
@@ -28,12 +35,77 @@ const App = () => {
   const [booksByUser, setBooksByUser] = useState([])
   const [user, setUser] = useState('')
 
+  const updateCacheWith = (addedBook) => {
+    const includedIn = (set, object) =>
+      set.map((p) => p.id).includes(object.id)
+    const dataInStore = client.readQuery({ query: ALL_BOOKS })
+    if (!includedIn(dataInStore.allBooks, addedBook)) {
+      client.writeQuery({
+        query: ALL_BOOKS,
+        data: { allBooks: dataInStore.allBooks.concat(addedBook) },
+      })
+    }
+    const authorInStore = client.readQuery({ query: ALL_AUTHORS })
+    if (
+      !authorInStore.allAuthors
+        .map((a) => a.name)
+        .includes(addedBook.author.name)
+    ) {
+      client.writeQuery({
+        query: ALL_AUTHORS,
+        data: {
+          allAuthors: authorInStore.allAuthors.concat(
+            addedBook.author
+          ),
+        },
+      })
+    } else {
+      client.writeQuery({
+        query: ALL_AUTHORS,
+        data: {
+          allAuthors: authorInStore.allAuthors.map((a) =>
+            a.id === addedBook.author.id
+              ? { ...a, bookCount: a.bookCount + 1 }
+              : a
+          ),
+        },
+      })
+    }
+    if (resultUser.data) {
+      if (
+        resultUser.data.me &&
+        addedBook.genres.includes(resultUser.data.me.favoriteGenre)
+      ) {
+        console.log('resultUser.data', resultUser.data.me)
+        client.watchQuery({
+          query: getBooksByGenre,
+          data: {
+            allBooks: resultBooksByGenre.data.allBooks.concat(
+              addedBook
+            ),
+          },
+        })
+      }
+    }
+  }
+
   const notify = (message) => {
     setErrorMessage(message)
     setTimeout(() => {
       setErrorMessage(null)
     }, 10000)
   }
+
+  useSubscription(BOOK_ADDED, {
+    onSubscriptionData: ({ subscriptionData }) => {
+      console.log('subscribe')
+      const addedBook = subscriptionData.data.bookAdded
+      notify(`${addedBook.title} added`)
+      console.log(`${addedBook.title} added`)
+      updateCacheWith(addedBook)
+    },
+  })
+
   const [getUser, resultUser] = useLazyQuery(ME, {
     fetchPolicy: 'network-only',
     onError: (error) => {
@@ -49,7 +121,7 @@ const App = () => {
       if (resultUser.data.me) {
         setUser(resultUser.data.me)
         getBooksByGenre({
-          variables: { genres: user.favoriteGenre },
+          variables: { genres: resultUser.data.me.favoriteGenre },
         })
       }
     }
@@ -149,7 +221,8 @@ const App = () => {
       <NewBook
         show={page === 'add'}
         setPage={setPage}
-        getUser={getUser}
+        setError={setError}
+        updateCacheWith={updateCacheWith}
       />
     </div>
   )

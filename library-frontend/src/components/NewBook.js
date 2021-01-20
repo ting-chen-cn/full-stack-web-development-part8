@@ -3,7 +3,7 @@ import { ADD_BOOK, ALL_BOOKS, ALL_AUTHORS } from './query'
 import { useMutation } from '@apollo/client'
 import { Button, Form, InputGroup } from 'react-bootstrap'
 
-const NewBook = ({ show, setPage, getUser }) => {
+const NewBook = ({ show, setPage, updateCacheWith }) => {
   const [title, setTitle] = useState('')
   const [author, setAuthor] = useState('')
   const [published, setPublished] = useState('')
@@ -49,7 +49,12 @@ const NewBook = ({ show, setPage, getUser }) => {
   // }
 
   const [createBook] = useMutation(ADD_BOOK, {
-    refetchQueries: [{ query: ALL_BOOKS }, { query: ALL_AUTHORS }],
+    onError: (error) => {
+      console.log(error)
+    },
+    update: (store, response) => {
+      updateCacheWith(response.data.addBook)
+    },
   })
   if (!show) {
     return null
